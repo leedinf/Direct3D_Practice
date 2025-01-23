@@ -381,7 +381,6 @@ public:
         float Pad;
     };
 
-    //ID3D11Buffer* ConstantBuffer = nullptr;
 
     void CreateConstantBuffer()
     {
@@ -502,11 +501,38 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     ETypePrimitive typePrimitive = EPT_Triangle;
     
-    FVector3	offset(0.0f); // 도형의 움직임 정도를 담을 offset 변수
+    FVector3 offset(0.0f); // 도형의 움직임 정도를 담을 offset 변수
+    FVector3 velocity(0.0f); // 도형의 움직임 정도를 담을 velocity 변수
+
+    const float leftBorder = -1.0f;
+    const float rightBorder = 1.0f;
+    const float topBorder = -1.0f;
+    const float bottomBorder = 1.0f;
+    const float sphereRadius= 1.0f;
+
+    bool bBoundBallToScreen = true;
+    bool bPinballMovement = true;
+
+    //초기속도 define
+
+    const float ballSpeed = 0.001f;
+    velocity.x = ((float)(rand() % 100 - 50)) * ballSpeed;
+    velocity.y = ((float)(rand() % 100 - 50)) * ballSpeed;//0.001f를 조절해 초기속도 조절
+
+    const int targetFPS = 30;
+    const double targetFrameTime = 1000.0 / targetFPS;
+
+    LARGE_INTEGER frequency;
+    QueryPerformanceFrequency(&frequency);
+
+    LARGE_INTEGER startTime, endTime;
+    double elapsedTime = 0.0;
 
 	//Main Loop (Quit Message가 들어오기 전까지 아래 Loop를 무한히 실행)
 	while (bIsExit == false) {
-		MSG msg;
+        QueryPerformanceCounter(&startTime);
+        
+        MSG msg;
 
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
 
@@ -540,6 +566,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                     offset.y -= 0.01f;
                 }
             }
+            if (bPinballMovement)
+            {
+                offset.x += velocity.x;
+                offset.y += velocity.y;
+                offset.z += velocity.z;
+
+                float renderRadius = sphereRadius * scaleMod;
+                if (offset.x < leftBorder + renderRadius) velocity.x *= -1.0f;
+                if (offset.x > rightBorder - renderRadius) velocity.x *= -1.0f;
+                if (offset.y < topBorder + renderRadius) velocity.y *= -1.0f;
+                if (offset.y > bottomBorder - renderRadius) velocity.y *= -1.0f;
+            }
+            //화면 밖으로 나가지 않게
+            if (bBoundBallToScreen)
+            {
+                float renderRadius = sphereRadius * scaleMod;
+                if (offset.x < leftBorder + renderRadius) offset.x = leftBorder + renderRadius;
+                if (offset.x > rightBorder - renderRadius) offset.x = rightBorder - renderRadius;
+                if (offset.y < topBorder + renderRadius) offset.y = topBorder + renderRadius;
+                if (offset.y > bottomBorder - renderRadius) offset.y = bottomBorder - renderRadius;
+            }
 		}
         // 준비 작업
         renderer.Prepare();
@@ -549,6 +596,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         // offset을 상수 버퍼로 업데이트
         renderer.UpdateConstant(offset);
+        typePrimitive = EPT_Sphere;
 
         switch (typePrimitive)
         {
@@ -572,13 +620,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		ImGui::Begin("Jungle Property Window");
 
         ImGui::Text("Hello Jungle World!");
+
+        ImGui::Checkbox("Bound Ball To Screen", &bBoundBallToScreen);
+        ImGui::Checkbox("Pinball Movement", &bPinballMovement);
         //if (ImGui::Button("Quit this app"))
         //{
         //    // 현재 윈도우에 Quit 메시지를 메시지 큐로 보냄
         //    PostMessage(hWnd, WM_QUIT, 0, 0);
         //}
 
-        if (ImGui::Button("Change primitive"))
+        // Change primitive 버튼
+        /*if (ImGui::Button("Change primitive"))
         {
             switch (typePrimitive)
             {
@@ -592,7 +644,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 typePrimitive = EPT_Triangle;
                 break;
             }
-        }
+        }*/
 
 		ImGui::End();
 
@@ -603,6 +655,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         // 다 그렸으면 버퍼를 교환
         renderer.SwapBuffer();
+
+        do
+        {
+            Sleep(0);
+
+            QueryPerformanceCounter(&endTime);
+
+            elapsedTime = (endTime.QuadPart - startTime.QuadPart) * 1000.0 / frequency.QuadPart;
+
+
+        } while (elapsedTime < targetFrameTime);
 	}
 
     //ImGui 소멸 함수들 호출
