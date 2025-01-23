@@ -6,11 +6,25 @@
 
 #include <d3d11.h>
 #include <d3dcompiler.h>
+
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_internal.h"
+#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_win32.h"
+
 struct FVertexSimple
 {
     float x, y, z;    // Position
     float r, g, b, a; // Color
 };
+
+//Structure for a 3D vector
+struct FVector3
+{
+    float x, y, z;
+    FVector3(float _x = 0, float _y = 0, float _z = 0) : x(_x), y(_y), z(_z) {}
+};
+#include "Sphere.h"
 
 // 삼각형을 하드 코딩
 FVertexSimple triangle_vertices[] =
@@ -19,6 +33,59 @@ FVertexSimple triangle_vertices[] =
     {  1.0f, -1.0f, 0.0f,  0.0f, 1.0f, 0.0f, 1.0f }, // Bottom-right vertex (green)
     { -1.0f, -1.0f, 0.0f,  0.0f, 0.0f, 1.0f, 1.0f }  // Bottom-left vertex (blue)
 };
+
+FVertexSimple cube_vertices[] =
+{
+    // Front face (Z+)
+    { -0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f, 1.0f }, // Bottom-left (red)
+    { -0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f }, // Top-left (yellow)
+    {  0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 1.0f }, // Bottom-right (green)
+    { -0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f }, // Top-left (yellow)
+    {  0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f }, // Top-right (blue)
+    {  0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 1.0f }, // Bottom-right (green)
+
+    // Back face (Z-)
+    { -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f, 1.0f }, // Bottom-left (cyan)
+    {  0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 1.0f, 1.0f }, // Bottom-right (magenta)
+    { -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f, 1.0f }, // Top-left (blue)
+    { -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f, 1.0f }, // Top-left (blue)
+    {  0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 1.0f, 1.0f }, // Bottom-right (magenta)
+    {  0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 0.0f, 1.0f }, // Top-right (yellow)
+
+    // Left face (X-)
+    { -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 1.0f, 1.0f }, // Bottom-left (purple)
+    { -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f, 1.0f }, // Top-left (blue)
+    { -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 1.0f }, // Bottom-right (green)
+    { -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f, 1.0f }, // Top-left (blue)
+    { -0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f, 1.0f }, // Top-right (yellow)
+    { -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 1.0f }, // Bottom-right (green)
+
+    // Right face (X+)
+    {  0.5f, -0.5f, -0.5f,  1.0f, 0.5f, 0.0f, 1.0f }, // Bottom-left (orange)
+    {  0.5f, -0.5f,  0.5f,  0.5f, 0.5f, 0.5f, 1.0f }, // Bottom-right (gray)
+    {  0.5f,  0.5f, -0.5f,  0.5f, 0.0f, 0.5f, 1.0f }, // Top-left (purple)
+    {  0.5f,  0.5f, -0.5f,  0.5f, 0.0f, 0.5f, 1.0f }, // Top-left (purple)
+    {  0.5f, -0.5f,  0.5f,  0.5f, 0.5f, 0.5f, 1.0f }, // Bottom-right (gray)
+    {  0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 0.5f, 1.0f }, // Top-right (dark blue)
+
+    // Top face (Y+)
+    { -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 0.5f, 1.0f }, // Bottom-left (light green)
+    { -0.5f,  0.5f,  0.5f,  0.0f, 0.5f, 1.0f, 1.0f }, // Top-left (cyan)
+    {  0.5f,  0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f }, // Bottom-right (white)
+    { -0.5f,  0.5f,  0.5f,  0.0f, 0.5f, 1.0f, 1.0f }, // Top-left (cyan)
+    {  0.5f,  0.5f,  0.5f,  0.5f, 0.5f, 0.0f, 1.0f }, // Top-right (brown)
+    {  0.5f,  0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f }, // Bottom-right (white)
+
+    // Bottom face (Y-)
+    { -0.5f, -0.5f, -0.5f,  0.5f, 0.5f, 0.0f, 1.0f }, // Bottom-left (brown)
+    { -0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f, 1.0f }, // Top-left (red)
+    {  0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.5f, 1.0f }, // Bottom-right (purple)
+    { -0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f, 1.0f }, // Top-left (red)
+    {  0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 1.0f }, // Top-right (green)
+    {  0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.5f, 1.0f }, // Bottom-right (purple)
+};
+
+
 
 class URenderer {
 public:
@@ -152,6 +219,10 @@ public:
     }
 
     // 래스터라이저 상태를 생성하는 함수
+    /*
+    래스터라이저는 3D 공간 도형 데이터를 2D 화면에 그릴 수 있는 픽셀 데이터로 변환하는 과정.
+    쉐이더 단계를 거친 후 픽셀 데이터 생성 단계 전에 위치.
+    */
     void CreateRasterizerState()
     {
         D3D11_RASTERIZER_DESC rasterizerdesc = {};
@@ -264,6 +335,12 @@ public:
         DeviceContext->VSSetShader(SimpleVertexShader, nullptr, 0);
         DeviceContext->PSSetShader(SimplePixelShader, nullptr, 0);
         DeviceContext->IASetInputLayout(SimpleInputLayout);
+
+        // 버텍스 쉐이더에 상수 버퍼를 설정합니다.
+        if (ConstantBuffer)
+        {
+            DeviceContext->VSSetConstantBuffers(0, 1, &ConstantBuffer);
+        }
     }
 
     void RenderPrimitive(ID3D11Buffer* pBuffer, UINT numVertices)
@@ -273,14 +350,87 @@ public:
 
         DeviceContext->Draw(numVertices, 0);
     }
+
+    ID3D11Buffer* CreateVertexBuffer(FVertexSimple* vertices, UINT byteWidth)
+    {
+        // 2. Create a vertex buffer
+        D3D11_BUFFER_DESC vertexbufferdesc = {};
+        vertexbufferdesc.ByteWidth = byteWidth;
+        vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE; // will never be updated 
+        vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA vertexbufferSRD = { vertices };
+
+        ID3D11Buffer* vertexBuffer;
+
+        Device->CreateBuffer(&vertexbufferdesc, &vertexbufferSRD, &vertexBuffer);
+
+        return vertexBuffer;
+    }
+
+    void ReleaseVertexBuffer(ID3D11Buffer* vertexBuffer)
+    {
+        vertexBuffer->Release();
+    }
+
+    //상수 버퍼 추가
+
+    struct FConstants
+    {
+        FVector3 Offset;
+        float Pad;
+    };
+
+    //ID3D11Buffer* ConstantBuffer = nullptr;
+
+    void CreateConstantBuffer()
+    {
+        D3D11_BUFFER_DESC constantbufferdesc = {};
+        constantbufferdesc.ByteWidth = sizeof(FConstants) + 0xf & 0xfffffff0; // ensure constant buffer size is multiple of 16 bytes
+        constantbufferdesc.Usage = D3D11_USAGE_DYNAMIC; // will be updated from CPU every frame
+        constantbufferdesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        constantbufferdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+        Device->CreateBuffer(&constantbufferdesc, nullptr, &ConstantBuffer);
+    }
+
+    void ReleaseConstantBuffer()
+    {
+        if (ConstantBuffer)
+        {
+            ConstantBuffer->Release();
+            ConstantBuffer = nullptr;
+        }
+    }
+
+    void UpdateConstant(FVector3 Offset)
+    {
+        if (ConstantBuffer)
+        {
+            D3D11_MAPPED_SUBRESOURCE constantbufferMSR;
+
+            DeviceContext->Map(ConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &constantbufferMSR); // update constant buffer every frame
+            FConstants* constants = (FConstants*)constantbufferMSR.pData;
+            {
+                constants->Offset = Offset;
+            }
+            DeviceContext->Unmap(ConstantBuffer, 0);
+        }
+    }
 };
 
 
-
+//WndProcHandler 선언
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 //각종 메세지 처리 함수
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	switch (message) 
+	
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+    {
+        return true;
+    }
+    switch (message) 
 	{
 	case WM_DESTROY:
 		//signal that the app should quit.
@@ -294,9 +444,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 }
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-	WCHAR WindowClass[] = L"JungleWindowClass";
+	WCHAR WindowClass[] = L"JungleWindowClass"; // 그냥 클래스 이름인듯?
 
-	WCHAR Title[] = L"Game Tech Lab";
+	WCHAR Title[] = L"Game Tech Lab"; //창 위에 타이틀 뜸
 
 	//각종 메세지를 처리할 함수인 WndProc의 함수 포인터를 WindowClass 구조체에 넣는다.
 	WNDCLASSW wndclass = { 0, WndProc, 0,0,0,0,0,0,0, WindowClass };
@@ -311,30 +461,48 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     renderer.Create(hWnd);
     renderer.CreateShader();  // 렌더러 생성 직후에 쉐이더를 생성하는 함수를 호출합니다.
-
-    // Renderer와 Shader 생성 이후에 버텍스 버퍼를 생성합니다.
-    FVertexSimple* vertices = triangle_vertices;
-    UINT ByteWidth = sizeof(triangle_vertices);
-    UINT numVertices = sizeof(triangle_vertices) / sizeof(FVertexSimple);
-
-    // 생성
-    D3D11_BUFFER_DESC vertexbufferdesc = {};
-    vertexbufferdesc.ByteWidth = ByteWidth;
-    vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE;
-    vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-    D3D11_SUBRESOURCE_DATA vertexbufferSRD = { vertices };
-
-    ID3D11Buffer* vertexBuffer;
-
-    renderer.Device->CreateBuffer(&vertexbufferdesc, &vertexbufferSRD, &vertexBuffer);
+    // 상수버퍼 생성
+    renderer.CreateConstantBuffer();
+    //렌더러 생성 후 ImGui 생성 및 초기화 함수 호출
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui_ImplWin32_Init((void*)hWnd);
+    ImGui_ImplDX11_Init(renderer.Device, renderer.DeviceContext);
 
 
+    UINT numVerticesTriangle = sizeof(triangle_vertices) / sizeof(FVertexSimple);
+    UINT numVerticesCube = sizeof(cube_vertices) / sizeof(FVertexSimple);
+    UINT numVerticesSphere = sizeof(sphere_vertices) / sizeof(FVertexSimple);
+
+    float scaleMod = 0.1f;
+
+    for (UINT i = 0; i < numVerticesSphere; ++i)
+    {
+        sphere_vertices[i].x *= scaleMod;
+        sphere_vertices[i].y *= scaleMod;
+        sphere_vertices[i].z *= scaleMod;
+    }
+
+    ID3D11Buffer* vertexBufferTriangle = renderer.CreateVertexBuffer(triangle_vertices, sizeof(triangle_vertices));
+    ID3D11Buffer* vertexBufferCube = renderer.CreateVertexBuffer(cube_vertices, sizeof(cube_vertices));
+    ID3D11Buffer* vertexBufferSphere = renderer.CreateVertexBuffer(sphere_vertices, sizeof(sphere_vertices));
 
 
 	bool bIsExit = false;
 
 	//각종 생성하는 코드를 여기에 추가합니다.
+    enum ETypePrimitive
+    {
+        EPT_Triangle,
+        EPT_Cube,
+        EPT_Sphere,
+        EPT_Max,
+    };
+
+    ETypePrimitive typePrimitive = EPT_Triangle;
+    
+    FVector3	offset(0.0f); // 도형의 움직임 정도를 담을 offset 변수
 
 	//Main Loop (Quit Message가 들어오기 전까지 아래 Loop를 무한히 실행)
 	while (bIsExit == false) {
@@ -351,22 +519,107 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				bIsExit = true;
 				break;
 			}
+            else if (msg.message == WM_KEYDOWN)
+            {
+                // 눌린 키가 방향키면 해당 방향에 맞춰서
+                // offset 변수의 x, y 멤버 변수의 값을 조정
+                if (msg.wParam == VK_LEFT)
+                {
+                    offset.x -= 0.01f;
+                }
+                if (msg.wParam == VK_RIGHT)
+                {
+                    offset.x += 0.01f;
+                }
+                if (msg.wParam == VK_UP)
+                {
+                    offset.y += 0.01f;
+                }
+                if (msg.wParam == VK_DOWN)
+                {
+                    offset.y -= 0.01f;
+                }
+            }
 		}
         // 준비 작업
         renderer.Prepare();
         renderer.PrepareShader();
 
         // 생성한 버텍스 버퍼를 넘겨 실질적인 렌더링 요청
-        renderer.RenderPrimitive(vertexBuffer, numVertices);
+
+        // offset을 상수 버퍼로 업데이트
+        renderer.UpdateConstant(offset);
+
+        switch (typePrimitive)
+        {
+        case EPT_Triangle:
+            renderer.RenderPrimitive(vertexBufferTriangle, numVerticesTriangle);
+            break;
+        case EPT_Cube:
+            renderer.RenderPrimitive(vertexBufferCube, numVerticesCube);
+            break;
+        case EPT_Sphere:
+            renderer.RenderPrimitive(vertexBufferSphere, numVerticesSphere);
+            break;
+        }
+
+        //ImGui 렌더링 준비, 컨트롤 설정
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        // 이후 ImGui UI 컨트롤 추가는 ImGui::NewFrame()과 ImGui::Render() 사이인 여기에 위치합니다.
+		ImGui::Begin("Jungle Property Window");
+
+        ImGui::Text("Hello Jungle World!");
+        //if (ImGui::Button("Quit this app"))
+        //{
+        //    // 현재 윈도우에 Quit 메시지를 메시지 큐로 보냄
+        //    PostMessage(hWnd, WM_QUIT, 0, 0);
+        //}
+
+        if (ImGui::Button("Change primitive"))
+        {
+            switch (typePrimitive)
+            {
+            case EPT_Triangle:
+                typePrimitive = EPT_Cube;
+                break;
+            case EPT_Cube:
+                typePrimitive = EPT_Sphere;
+                break;
+            case EPT_Sphere:
+                typePrimitive = EPT_Triangle;
+                break;
+            }
+        }
+
+		ImGui::End();
+
+        //렌더링 요청 함수?
+        ImGui::Render();
+        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
 
         // 다 그렸으면 버퍼를 교환
         renderer.SwapBuffer();
 	}
 
+    //ImGui 소멸 함수들 호출
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+
     // 버텍스 버퍼 소멸은 Renderer 소멸전에 처리합니다.
-    vertexBuffer->Release();
-    // 렌더러 소멸 직전에 쉐이더를 소멸 시키는 함수를 호출합니다.
-    renderer.ReleaseShader();
+    //vertexBuffer->Release();
+
+    renderer.ReleaseVertexBuffer(vertexBufferTriangle);
+    renderer.ReleaseVertexBuffer(vertexBufferCube);
+    renderer.ReleaseVertexBuffer(vertexBufferSphere);
+
+    // 렌더러 소멸
+    renderer.ReleaseConstantBuffer(); // 상수버퍼 소멸
+    renderer.ReleaseShader(); //렌더러 소멸 직전에 쉐이더를 소멸 시키는 함수를 호출
     renderer.Release();
 	return 0;
 
