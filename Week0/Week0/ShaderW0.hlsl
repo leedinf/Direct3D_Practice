@@ -3,7 +3,7 @@
 //상수버퍼 선언 추가
 cbuffer constants : register(b0)
 {
-		float3 Offset;
+	float3 Offset;
     float Pad;
 }
 struct VS_INPUT

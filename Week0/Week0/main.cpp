@@ -110,9 +110,6 @@ public:
 
 public:
 
-    
-
-
     // 렌더러 초기화 함수
 
 
@@ -232,6 +229,14 @@ public:
         Device->CreateRasterizerState(&rasterizerdesc, &RasterizerState);
     }
 
+    /*
+    
+    래스터라이저 :
+    3D 그래픽스 파이프라인에서 
+    3D 모델의 기하학적 데이터 -> 2D 화면의 픽셀 
+    변환하여 최종 이미지를 생성하는 과정을 담당하는 컴포넌트
+
+    */
     // 래스터라이저 상태를 해제하는 함수
     void ReleaseRasterizerState()
     {
@@ -377,8 +382,8 @@ public:
 
     struct FConstants
     {
-        FVector3 Offset;
-        float Pad;
+        FVector3 Offset; // 12바이트 
+        float Pad; //16바이트 정렬 필요해서 4바이트 float 패딩 추가
     };
 
 
@@ -515,11 +520,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     //초기속도 define
 
-    const float ballSpeed = 0.001f;
+    const float ballSpeed = 0.004f;
     velocity.x = ((float)(rand() % 100 - 50)) * ballSpeed;
     velocity.y = ((float)(rand() % 100 - 50)) * ballSpeed;//0.001f를 조절해 초기속도 조절
 
-    const int targetFPS = 30;
+    const int targetFPS = 60;
     const double targetFrameTime = 1000.0 / targetFPS;
 
     LARGE_INTEGER frequency;
@@ -545,27 +550,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				bIsExit = true;
 				break;
 			}
-            else if (msg.message == WM_KEYDOWN)
-            {
-                // 눌린 키가 방향키면 해당 방향에 맞춰서
-                // offset 변수의 x, y 멤버 변수의 값을 조정
-                if (msg.wParam == VK_LEFT)
-                {
-                    offset.x -= 0.01f;
-                }
-                if (msg.wParam == VK_RIGHT)
-                {
-                    offset.x += 0.01f;
-                }
-                if (msg.wParam == VK_UP)
-                {
-                    offset.y += 0.01f;
-                }
-                if (msg.wParam == VK_DOWN)
-                {
-                    offset.y -= 0.01f;
-                }
-            }
+            /* PeekMessage while문 밖에서 따로 입력 처리*/
+            //else if (!bPinballMovement && msg.message == WM_KEYDOWN)
+            //{
+            //    // 눌린 키가 방향키면 해당 방향에 맞춰서
+            //    // offset 변수의 x, y 멤버 변수의 값을 조정
+            //    if (msg.wParam == VK_LEFT)
+            //    {
+            //        offset.x -= 0.01f;
+            //    }
+            //    if (msg.wParam == VK_RIGHT)
+            //    {
+            //        offset.x += 0.01f;
+            //    }
+            //    if (msg.wParam == VK_UP)
+            //    {
+            //        offset.y += 0.01f;
+            //    }
+            //    if (msg.wParam == VK_DOWN)
+            //    {
+            //        offset.y -= 0.01f;
+            //    }
+            //}
             if (bPinballMovement)
             {
                 offset.x += velocity.x;
@@ -577,6 +583,33 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 if (offset.x > rightBorder - renderRadius) velocity.x *= -1.0f;
                 if (offset.y < topBorder + renderRadius) velocity.y *= -1.0f;
                 if (offset.y > bottomBorder - renderRadius) velocity.y *= -1.0f;
+            }
+            else {
+                // 메시지 처리 후 키 상태 폴링
+                if (!bPinballMovement)
+                {
+                    // 왼쪽 키가 눌려있는지 확인
+                    if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+                    {
+                        offset.x -= 0.01f;
+                    }
+                    // 오른쪽 키가 눌려있는지 확인
+                    if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+                    {
+                        offset.x += 0.01f;
+                    }
+                    // 위쪽 키가 눌려있는지 확인
+                    if (GetAsyncKeyState(VK_UP) & 0x8000)
+                    {
+                        offset.y += 0.01f;
+                    }
+                    // 아래쪽 키가 눌려있는지 확인
+                    if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+                    {
+                        offset.y -= 0.01f;
+                    }
+                }
+
             }
             //화면 밖으로 나가지 않게
             if (bBoundBallToScreen)
